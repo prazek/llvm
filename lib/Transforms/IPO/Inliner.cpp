@@ -31,6 +31,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/InlinerPass.h"
+#include "llvm/Transforms/IPO/InlinerStats.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/Local.h"
 using namespace llvm;
@@ -46,6 +47,14 @@ STATISTIC(NumMergedAllocas, "Number of allocas merged together");
 // to inline a function A into B, we analyze the callers of B in order to see
 // if those would be more profitable and blocked inline steps.
 STATISTIC(NumCallerCallersAnalyzed, "Number of caller-callers analyzed");
+
+static cl::opt<bool>
+    EnableInlineGraphStats("enable-import-graph-stats", cl::init(false),
+                           cl::Hidden, cl::desc("Enable inline graph stats"));
+
+static cl::opt<bool> EnableListStats(
+    "enable-list-stats", cl::init(false), cl::Hidden,
+    cl::desc("Enable printing of statistics for each inlined function"));
 
 Inliner::Inliner(char &ID) : CallGraphSCCPass(ID), InsertLifetime(true) {}
 
@@ -63,7 +72,6 @@ void Inliner::getAnalysisUsage(AnalysisUsage &AU) const {
   CallGraphSCCPass::getAnalysisUsage(AU);
 }
 
-
 typedef DenseMap<ArrayType*, std::vector<AllocaInst*> >
 InlinedArrayAllocasTy;
 
@@ -78,6 +86,7 @@ InlinedArrayAllocasTy;
 static bool InlineCallIfPossible(Pass &P, CallSite CS, InlineFunctionInfo &IFI,
                                  InlinedArrayAllocasTy &InlinedArrayAllocas,
                                  int InlineHistory, bool InsertLifetime) {
+  // Calle and Caller information will be gone in CS after inlining.
   Function *Callee = CS.getCalledFunction();
   Function *Caller = CS.getCaller();
 
@@ -93,6 +102,9 @@ static bool InlineCallIfPossible(Pass &P, CallSite CS, InlineFunctionInfo &IFI,
   // inlined.
   if (!InlineFunction(CS, IFI, &AAR, InsertLifetime))
     return false;
+
+  if (EnableInlineGraphStats)
+    getInlinerStatistics(EnableListStats).addInlinedFunction(Caller, Callee);
 
   AttributeFuncs::mergeAttributesForInlining(*Caller, *Callee);
 
@@ -568,6 +580,8 @@ bool Inliner::inlineCalls(CallGraphSCC &SCC) {
 /// Remove now-dead linkonce functions at the end of
 /// processing to avoid breaking the SCC traversal.
 bool Inliner::doFinalization(CallGraph &CG) {
+  if (EnableInlineGraphStats)
+    getInlinerStatistics(EnableListStats).dumpStats();
   return removeDeadFunctions(CG);
 }
 

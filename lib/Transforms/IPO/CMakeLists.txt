@@ -17,6 +17,7 @@ add_llvm_library(LLVMipo
   InlineAlways.cpp
   InlineSimple.cpp
   Inliner.cpp
+  InlinerStats.cpp
   Internalize.cpp
   LoopExtractor.cpp
   LowerTypeTests.cpp
