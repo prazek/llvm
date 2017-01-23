@@ -1269,7 +1269,7 @@ MemorySSA::~MemorySSA() {
 
 MemorySSA::AccessList *MemorySSA::getOrCreateAccessList(const BasicBlock *BB) {
   auto Res = PerBlockAccesses.insert(std::make_pair(BB, nullptr));
-
+  
   if (Res.second)
     Res.first->second = make_unique<AccessList>();
   return Res.first->second.get();
@@ -1319,6 +1319,21 @@ private:
   void optimizeUsesInBlock(const BasicBlock *, unsigned long &, unsigned long &,
                            SmallVectorImpl<MemoryAccess *> &,
                            DenseMap<MemoryLocOrCall, MemlocStackInfo> &);
+  /// Maps load/store pointer operand with its group to the most dominating
+  /// defining access.
+  using MostDominatingInvariantGroupMap =
+      DenseMap<std::pair<Value *, MDNode *>, MemoryAccess *>;
+
+  struct InsertedInvariantGroupInfo {
+    Value *PointerOperand;
+    MDNode *InvariantGroup;
+    MemoryAccess *DefiningAccess;
+  };
+  /// Optimizes memory uses based on !invariant.group metadata.
+  void optimizeInvariantGroupUsesInBlock(
+      const BasicBlock *, MostDominatingInvariantGroupMap &,
+      SmallVectorImpl<InsertedInvariantGroupInfo> &);
+
   MemorySSA *MSSA;
   MemorySSAWalker *Walker;
   AliasAnalysis *AA;
@@ -1356,6 +1371,8 @@ void MemorySSA::OptimizeUses::optimizeUsesInBlock(
     BasicBlock *BackBlock = VersionStack.back()->getBlock();
     if (DT->dominates(BackBlock, BB))
       break;
+    // FIXME: This doesn't check if stack if stack empty.
+    // fix it, or write a comment if sentinel exists.
     while (VersionStack.back()->getBlock() == BackBlock)
       VersionStack.pop_back();
     ++PopEpoch;
@@ -1479,18 +1496,90 @@ void MemorySSA::OptimizeUses::optimizeUsesInBlock(
   }
 }
 
+void MemorySSA::OptimizeUses::optimizeInvariantGroupUsesInBlock(
+    const BasicBlock *BB,
+    MostDominatingInvariantGroupMap &MostDominatingInvariantGroup,
+    SmallVectorImpl<InsertedInvariantGroupInfo> &InsertedInvariants) {
+
+  const auto *InvariantGroupAccesses = MSSA->getInvariantGroupBlockAccesses(BB);
+  if (!InvariantGroupAccesses)
+    return;
+
+  // Erase inserted information from not dominated blocks.
+  BasicBlock *LastBlock = nullptr;
+  while (!InsertedInvariants.empty()) {
+    BasicBlock *const CurrentBlock =
+        InsertedInvariants.back().DefiningAccess->getBlock();
+    // Cache Last block to avoid checking for dominance.
+    if (LastBlock != CurrentBlock) {
+      LastBlock = CurrentBlock;
+      if (DT->dominates(CurrentBlock, BB))
+        break;
+    }
+    
+    InsertedInvariantGroupInfo GI = InsertedInvariants.back();
+    MostDominatingInvariantGroup.erase({GI.PointerOperand, GI.InvariantGroup});
+    InsertedInvariants.pop_back();
+  }
+
+  // Walk all loads/stores with !invariant.group, checking if there is
+  // dominating memory access with corresponding pointer operand and invariant
+  // group. If found then use it, if not then add it to map.
+  for (MemoryUseOrDef *MU : *InvariantGroupAccesses) {
+    auto *I = MU->getMemoryInst();
+    InsertedInvariantGroupInfo GI;
+    GI.InvariantGroup = I->getMetadata(LLVMContext::MD_invariant_group);
+    if (auto *LI = dyn_cast<LoadInst>(I))
+      GI.PointerOperand = LI->getPointerOperand()->stripPointerCasts();
+    else if (auto *SI = dyn_cast<StoreInst>(I))
+      GI.PointerOperand = SI->getPointerOperand()->stripPointerCasts();
+    assert(GI.PointerOperand && GI.InvariantGroup && "Nonnulls inserted");
+
+    const auto It = MostDominatingInvariantGroup.find(
+        {GI.PointerOperand, GI.InvariantGroup});
+    // We found dominating Instruction with the same operand and group.
+    if (It != MostDominatingInvariantGroup.end()) {
+      // Can't optimize Defs.
+      if (isa<MemoryDef>(MU))
+        continue;
+
+      // Skip liveOnEntry uses to not pessimize.
+      if (MSSA->isLiveOnEntryDef(MU->getDefiningAccess()))
+        continue;
+      MU->setDefiningAccess(It->second);
+    } else {
+      MemoryAccess *InsertingAccess;
+      if (isa<MemoryUse>(MU))
+        InsertingAccess = MU->getDefiningAccess();
+      else // MemoryDef
+        InsertingAccess = MU;
+
+      GI.DefiningAccess = InsertingAccess;
+      MostDominatingInvariantGroup[{GI.PointerOperand, GI.InvariantGroup}] =
+          InsertingAccess;
+      InsertedInvariants.push_back(GI);
+    }
+  }
+}
+
 /// Optimize uses to point to their actual clobbering definitions.
 void MemorySSA::OptimizeUses::optimizeUses() {
   SmallVector<MemoryAccess *, 16> VersionStack;
   DenseMap<MemoryLocOrCall, MemlocStackInfo> LocStackInfo;
   VersionStack.push_back(MSSA->getLiveOnEntryDef());
 
+  MostDominatingInvariantGroupMap InvariantGroups;
+  SmallVector<InsertedInvariantGroupInfo, 16> InsertedInvariantGroups;
   unsigned long StackEpoch = 1;
   unsigned long PopEpoch = 1;
+
   // We perform a non-recursive top-down dominator tree walk.
-  for (const auto *DomNode : depth_first(DT->getRootNode()))
+  for (const auto *DomNode : depth_first(DT->getRootNode())) {
     optimizeUsesInBlock(DomNode->getBlock(), StackEpoch, PopEpoch, VersionStack,
                         LocStackInfo);
+    optimizeInvariantGroupUsesInBlock(DomNode->getBlock(), InvariantGroups,
+                                      InsertedInvariantGroups);
+  }
 }
 
 void MemorySSA::placePHINodes(
@@ -1512,6 +1601,10 @@ void MemorySSA::placePHINodes(
     createMemoryPhi(BB);
 }
 
+static bool hasInvariantGroupMD(const Instruction &I) {
+  return I.getMetadata(LLVMContext::MD_invariant_group) != nullptr;
+}
+
 void MemorySSA::buildMemorySSA() {
   // We create an access to represent "live on entry", for things like
   // arguments or users of globals, where the memory they use is defined before
@@ -1530,6 +1623,7 @@ void MemorySSA::buildMemorySSA() {
   // stream.
   SmallPtrSet<BasicBlock *, 32> DefiningBlocks;
   SmallPtrSet<BasicBlock *, 32> DefUseBlocks;
+  SmallVector<MemoryUseOrDef *, 4> InvariantGroupAccesses;
   // Go through each block, figure out where defs occur, and chain together all
   // the accesses.
   for (BasicBlock &B : F) {
@@ -1551,11 +1645,19 @@ void MemorySSA::buildMemorySSA() {
           Defs = getOrCreateDefsList(&B);
         Defs->push_back(*MUD);
       }
+
+      if (hasInvariantGroupMD(I))
+        InvariantGroupAccesses.push_back(MUD);
     }
     if (InsertIntoDef)
       DefiningBlocks.insert(&B);
     if (Accesses)
       DefUseBlocks.insert(&B);
+    if (!InvariantGroupAccesses.empty()) {
+      PerBlockInvariantGroupAccesses.try_emplace(
+          &B, std::move(InvariantGroupAccesses));
+      InvariantGroupAccesses.clear();
+    }
   }
   placePHINodes(DefiningBlocks, BBNumbers);
 

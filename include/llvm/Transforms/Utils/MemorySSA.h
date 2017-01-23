@@ -578,6 +578,8 @@ public:
   using DefsList =
       simple_ilist<MemoryAccess, ilist_tag<MSSAHelpers::DefsOnlyTag>>;
 
+  using InvariantGroupAccesses = SmallVector<MemoryUseOrDef *, 4>;
+
   /// \brief Return the list of MemoryAccess's for a given basic block.
   ///
   /// This list is not modifiable by the user.
@@ -654,6 +656,12 @@ protected:
                              AccessList::iterator);
   MemoryUseOrDef *createDefinedAccess(Instruction *, MemoryAccess *);
 
+  const InvariantGroupAccesses *
+  getInvariantGroupBlockAccesses(const BasicBlock *BB) const {
+    auto It = PerBlockInvariantGroupAccesses.find(BB);
+    return It == PerBlockInvariantGroupAccesses.end() ? nullptr : &It->second;
+  }
+
 private:
   class CachingWalker;
   class OptimizeUses;
@@ -665,6 +673,8 @@ private:
   void verifyUseInDefs(MemoryAccess *, MemoryAccess *) const;
   using AccessMap = DenseMap<const BasicBlock *, std::unique_ptr<AccessList>>;
   using DefsMap = DenseMap<const BasicBlock *, std::unique_ptr<DefsList>>;
+  using UseOrDefAccessMap =
+      DenseMap<const BasicBlock *, InvariantGroupAccesses>;
 
   void
   determineInsertionPoint(const SmallPtrSetImpl<BasicBlock *> &DefiningBlocks);
@@ -698,6 +708,7 @@ private:
   // corresponding list is empty.
   AccessMap PerBlockAccesses;
   DefsMap PerBlockDefs;
+  UseOrDefAccessMap PerBlockInvariantGroupAccesses;
   std::unique_ptr<MemoryAccess> LiveOnEntryDef;
 
   // Domination mappings
