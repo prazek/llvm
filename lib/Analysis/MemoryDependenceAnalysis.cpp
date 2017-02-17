@@ -51,6 +51,10 @@ using namespace llvm;
 
 #define DEBUG_TYPE "memdep"
 
+static cl::opt<bool> OptimizeInvariantGroup(
+    "optimize-invariant", cl::Hidden, cl::init(true), cl::ZeroOrMore,
+    cl::desc("Should optimize based on invariant.group"));
+
 STATISTIC(NumCacheNonLocal, "Number of fully cached non-local responses");
 STATISTIC(NumCacheDirtyNonLocal, "Number of dirty cached non-local responses");
 STATISTIC(NumUncacheNonLocal, "Number of uncached non-local responses");
@@ -62,6 +66,45 @@ STATISTIC(NumCacheDirtyNonLocalPtr,
 STATISTIC(NumUncacheNonLocalPtr, "Number of uncached non-local ptr responses");
 STATISTIC(NumCacheCompleteNonLocalPtr,
           "Number of block queries that were completely cached");
+
+STATISTIC(NumDefs, "Number of defs");
+STATISTIC(NumClobbers, "Number of clobbers");
+STATISTIC(NumNonLocal, "Number of non local");
+STATISTIC(NumNonFuncLocal, "Number of non func local");
+STATISTIC(NumUnknown, "Number of unknown");
+
+
+
+STATISTIC(NumDefsInvariantGroup, "Number of defs with invariant.group");
+STATISTIC(NumClobberInvariantGroup, "Number of clobbers with invariant.group");
+STATISTIC(NumDefsNonLocalInvariantGroup, "Number of non local defs with invariant.group");
+
+STATISTIC(NumPendingNonLocalDefsInvariantGroup, "Number of pending defs found outside BB with invariant.group");
+STATISTIC(NumTrashInvariantGroup, "This should be 0");
+
+
+MemDepResult updateRightStatistic(MemDepResult ReturningResult,
+                                  llvm::Statistic &DefStatistic,
+                                  llvm::Statistic &ClobberStatistic,
+                                  llvm::Statistic &NonLocalStatistic,
+                                  llvm::Statistic &NonFuncLocalStatistic,
+                                  llvm::Statistic &UnknownStatistic) {
+  if (ReturningResult.isDef())
+    DefStatistic++;
+  else if (ReturningResult.isClobber())
+    ClobberStatistic++;
+  else if (ReturningResult.isNonLocal())
+    NonLocalStatistic++;
+  else if (ReturningResult.isNonFuncLocal())
+    NonFuncLocalStatistic++;
+  else if (ReturningResult.isUnknown())
+    UnknownStatistic++;
+  else
+    assert(false);
+
+  return ReturningResult;
+}
+
 
 // Limit for the number of instructions to scan in a block.
 
@@ -186,7 +229,7 @@ MemDepResult MemoryDependenceResults::getCallSiteDependencyFrom(
     // running time on extreme testcases.
     --Limit;
     if (!Limit)
-      return MemDepResult::getUnknown();
+      return updateRightStatistic(MemDepResult::getUnknown(), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
 
     Instruction *Inst = &*--ScanIt;
 
@@ -196,7 +239,7 @@ MemDepResult MemoryDependenceResults::getCallSiteDependencyFrom(
     if (Loc.Ptr) {
       // A simple instruction.
       if (AA.getModRefInfo(CS, Loc) != MRI_NoModRef)
-        return MemDepResult::getClobber(Inst);
+        return updateRightStatistic(MemDepResult::getClobber(Inst), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
       continue;
     }
 
@@ -211,27 +254,27 @@ MemDepResult MemoryDependenceResults::getCallSiteDependencyFrom(
         // CS can be found redundant and eliminated.
         if (isReadOnlyCall && !(MR & MRI_Mod) &&
             CS.getInstruction()->isIdenticalToWhenDefined(Inst))
-          return MemDepResult::getDef(Inst);
+          return updateRightStatistic(MemDepResult::getDef(Inst), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
 
         // Otherwise if the two calls don't interact (e.g. InstCS is readnone)
         // keep scanning.
         continue;
       default:
-        return MemDepResult::getClobber(Inst);
+        return updateRightStatistic(MemDepResult::getClobber(Inst), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
       }
     }
 
     // If we could not obtain a pointer for the instruction and the instruction
     // touches memory then assume that this is a dependency.
     if (MR != MRI_NoModRef)
-      return MemDepResult::getClobber(Inst);
+      return updateRightStatistic(MemDepResult::getClobber(Inst), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
   }
 
   // No dependence found.  If this is the entry block of the function, it is
   // unknown, otherwise it is non-local.
   if (BB != &BB->getParent()->getEntryBlock())
-    return MemDepResult::getNonLocal();
-  return MemDepResult::getNonFuncLocal();
+    return updateRightStatistic(MemDepResult::getNonLocal(), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
+  return updateRightStatistic(MemDepResult::getNonFuncLocal(), NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
 }
 
 unsigned MemoryDependenceResults::getLoadLoadClobberFullWidthSize(
@@ -328,29 +371,43 @@ MemDepResult MemoryDependenceResults::getPointerDependencyFrom(
     if (auto *LI = dyn_cast<LoadInst>(QueryInst)) {
       InvariantGroupDependency = getInvariantGroupPointerDependency(LI, BB);
 
+
       if (InvariantGroupDependency.isDef())
-        return InvariantGroupDependency;
+        return updateRightStatistic(InvariantGroupDependency,
+                                    NumDefsInvariantGroup,
+                                    NumTrashInvariantGroup,
+                                    NumTrashInvariantGroup,
+                                    NumTrashInvariantGroup,
+                                    NumTrashInvariantGroup);
     }
   }
   MemDepResult SimpleDep = getSimplePointerDependencyFrom(
       MemLoc, isLoad, ScanIt, BB, QueryInst, Limit);
   if (SimpleDep.isDef())
-    return SimpleDep;
+    return updateRightStatistic(SimpleDep, NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
+
   // Non-local invariant group dependency indicates there is non local Def
   // (it only returns nonLocal if it finds nonLocal def), which is better than
   // local clobber and everything else.
   if (InvariantGroupDependency.isNonLocal())
-    return InvariantGroupDependency;
+    return updateRightStatistic(InvariantGroupDependency,
+                                NumDefsInvariantGroup,
+                                NumClobberInvariantGroup,
+                                NumPendingNonLocalDefsInvariantGroup,
+                                NumTrashInvariantGroup,
+                                NumTrashInvariantGroup);
 
   assert(InvariantGroupDependency.isUnknown() &&
          "InvariantGroupDependency should be only unknown at this point");
-  return SimpleDep;
+  return updateRightStatistic(SimpleDep, NumDefs, NumClobbers, NumNonLocal, NumNonFuncLocal, NumUnknown);
 }
 
 MemDepResult
 MemoryDependenceResults::getInvariantGroupPointerDependency(LoadInst *LI,
                                                             BasicBlock *BB) {
 
+  if (!OptimizeInvariantGroup)
+    return MemDepResult::getUnknown();
   auto *InvariantGroupMD = LI->getMetadata(LLVMContext::MD_invariant_group);
   if (!InvariantGroupMD)
     return MemDepResult::getUnknown();
@@ -922,6 +979,12 @@ void MemoryDependenceResults::getNonLocalPointerDependency(
     if (NonLocalDefIt != NonLocalDefsCache.end()) {
       Result.push_back(std::move(NonLocalDefIt->second));
       NonLocalDefsCache.erase(NonLocalDefIt);
+      updateRightStatistic(MemDepResult::getNonLocal(),
+                           NumTrashInvariantGroup,
+                           NumTrashInvariantGroup,
+                           /*nonLocal*/ NumDefsNonLocalInvariantGroup,
+                           NumTrashInvariantGroup,
+                           NumTrashInvariantGroup);
       return;
     }
   }

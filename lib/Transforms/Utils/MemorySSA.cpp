@@ -1652,7 +1652,7 @@ void MemorySSA::insertIntoListsBefore(MemoryAccess *What, const BasicBlock *BB,
   BlockNumberingValid.erase(BB);
 }
 
-// Move What before Where in the IR.  The end result is taht What will belong to
+// Move What before Where in the IR.  The end result is that What will belong to
 // the right lists and have the right Block set, but will not otherwise be
 // correct. It will not have the right defining access, and if it is a def,
 // things below it will not properly be updated.
