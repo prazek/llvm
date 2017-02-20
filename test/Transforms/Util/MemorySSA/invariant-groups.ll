@@ -423,6 +423,28 @@ define void @combiningBitCastWithLoad() {
   call void %5(%struct.A* %3)
   ret void
 }
+; CHECK-LABEL: define void @hard(
+define void @hard(i8* %p) {
+; CHECK-NOT MemoryDef
+  store i8 42, i8* %p, !invariant.group !0
+  call void @clobber8(i8* %p)
+  br i1 undef, label %b1, label %b2
+b1:
+  store i8 42, i8* %p, !invariant.group !0
+  load i8, i8* %p, !invariant.group !0
+  br label %b3
+
+b2:
+  load i8, i8* %p, !invariant.group !0
+  br label %b3
+
+b3:
+  load i8, i8* %p, !invariant.group !0
+  store i8 42, i8* %p, !invariant.group !0
+  load i8, i8* %p, !invariant.group !0
+  ret void
+}
+
 
 declare i8* @llvm.invariant.group.barrier(i8*)
 declare void @clobber(i32*)

@@ -316,9 +316,6 @@ static bool isUseTriviallyOptimizableToLiveOnEntry(AliasAnalysis &AA,
                                                    const Instruction *I) {
   // If the memory can't be changed, then loads of the memory can't be
   // clobbered.
-  //
-  // FIXME: We should handle invariant groups, as well. It's a bit harder,
-  // because we need to pay close attention to invariant group barriers.
   return isa<LoadInst>(I) && (I->getMetadata(LLVMContext::MD_invariant_load) ||
                               AA.pointsToConstantMemory(I));
 }
@@ -1527,13 +1524,15 @@ void MemorySSA::OptimizeUses::optimizeInvariantGroupUsesInBlock(
   // group. If found then use it, if not then add it to map.
   for (MemoryUseOrDef *MU : *InvariantGroupAccesses) {
     auto *I = MU->getMemoryInst();
-    InsertedInvariantGroupInfo GI;
+    InsertedInvariantGroupInfo GI{};
     GI.InvariantGroup = I->getMetadata(LLVMContext::MD_invariant_group);
+
     if (auto *LI = dyn_cast<LoadInst>(I))
       GI.PointerOperand = LI->getPointerOperand()->stripPointerCasts();
     else if (auto *SI = dyn_cast<StoreInst>(I))
       GI.PointerOperand = SI->getPointerOperand()->stripPointerCasts();
-    assert(GI.PointerOperand && GI.InvariantGroup && "Nonnulls inserted");
+    assert(GI.PointerOperand && GI.InvariantGroup &&
+           "PointerOperand and InvariantGroup should be non-null");
 
     const auto It = MostDominatingInvariantGroup.find(
         {GI.PointerOperand, GI.InvariantGroup});
@@ -1546,17 +1545,15 @@ void MemorySSA::OptimizeUses::optimizeInvariantGroupUsesInBlock(
       // Skip liveOnEntry uses to not pessimize.
       if (MSSA->isLiveOnEntryDef(MU->getDefiningAccess()))
         continue;
-      MU->setDefiningAccess(It->second);
+      MU->setDefiningAccess(It->second, true);
     } else {
-      MemoryAccess *InsertingAccess;
-      if (isa<MemoryUse>(MU))
-        InsertingAccess = MU->getDefiningAccess();
-      else // MemoryDef
-        InsertingAccess = MU;
+      MemoryAccess *const DefiningAccess = isa<MemoryUse>(MU) ?
+                                      MU->getDefiningAccess() :
+                                      MU; // MemoryDef
 
-      GI.DefiningAccess = InsertingAccess;
+      GI.DefiningAccess = DefiningAccess;
       MostDominatingInvariantGroup[{GI.PointerOperand, GI.InvariantGroup}] =
-          InsertingAccess;
+          DefiningAccess;
       InsertedInvariants.push_back(GI);
     }
   }
