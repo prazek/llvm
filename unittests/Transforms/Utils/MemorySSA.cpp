@@ -281,6 +281,7 @@ TEST_F(MemorySSATest, MoveAStore) {
 
   EntryStoreAccess->replaceAllUsesWith(NewStoreAccess);
   Updater.removeMemoryAccess(SideStoreAccess);
+
   MSSA.verifyMemorySSA();
 }
 
@@ -310,16 +311,13 @@ TEST_F(MemorySSATest, MoveAStoreUpdater) {
   MemorySSA &MSSA = *Analyses->MSSA;
   MemorySSAUpdater Updater(&MSSA);
 
-  MSSA.dump();
   // Move the store
   SideStore->moveBefore(Entry->getTerminator());
-  MSSA.dump();
   auto *EntryStoreAccess = MSSA.getMemoryAccess(EntryStore);
   auto *SideStoreAccess = MSSA.getMemoryAccess(SideStore);
   auto *NewStoreAccess = Updater.createMemoryAccessAfter(
       SideStore, EntryStoreAccess, EntryStoreAccess);
 
-  MSSA.dump();
   // Before, the load will point to a phi of the EntryStore and SideStore.
   auto *LoadAccess = cast<MemoryUse>(MSSA.getMemoryAccess(MergeLoad));
   EXPECT_TRUE(isa<MemoryPhi>(LoadAccess->getDefiningAccess()));
@@ -329,7 +327,6 @@ TEST_F(MemorySSATest, MoveAStoreUpdater) {
   Updater.removeMemoryAccess(SideStoreAccess);
 
   Updater.insertDef(cast<MemoryDef>(NewStoreAccess));
-  MSSA.dump();
   //EXPECT_TRUE(false);
   // After it's a phi of the new side store access.
   EXPECT_EQ(MergePhi->getIncomingValue(0), NewStoreAccess);
@@ -362,7 +359,6 @@ TEST_F(MemorySSATest, MoveAStoreUpdaterMove) {
   setupAnalyses();
   MemorySSA &MSSA = *Analyses->MSSA;
   MemorySSAUpdater Updater(&MSSA);
-  MSSA.dump();
   // Move the store
   auto *EntryStoreAccess = MSSA.getMemoryAccess(EntryStore);
   auto *SideStoreAccess = MSSA.getMemoryAccess(SideStore);
@@ -373,14 +369,11 @@ TEST_F(MemorySSATest, MoveAStoreUpdaterMove) {
   EXPECT_EQ(MergePhi->getIncomingValue(1), EntryStoreAccess);
   EXPECT_EQ(MergePhi->getIncomingValue(0), SideStoreAccess);
   SideStore->moveBefore(*EntryStore->getParent(), ++EntryStore->getIterator());
-  MSSA.dump();
 
   Updater.moveAfter(SideStoreAccess, EntryStoreAccess);
-  MSSA.dump();
   // After, it's a phi of the side store.
   EXPECT_EQ(MergePhi->getIncomingValue(0), SideStoreAccess);
   EXPECT_EQ(MergePhi->getIncomingValue(1), SideStoreAccess);
-  EXPECT_FALSE(true);
   MSSA.verifyMemorySSA();
 }
 
@@ -523,7 +516,6 @@ TEST_F(MemorySSATest, RemoveMemoryAccess) {
   Updater.removeMemoryAccess(StoreAccess);
   MSSA.verifyMemorySSA();
 
-  MSSA.dump();
   // After the removeaccess, let's see if we got the right accesses
   // The load should still point to the phi ...
   EXPECT_EQ(DefiningAccess, LoadAccess->getDefiningAccess());
@@ -537,7 +529,6 @@ TEST_F(MemorySSATest, RemoveMemoryAccess) {
       MSSA.isLiveOnEntryDef(Walker->getClobberingMemoryAccess(LoadInst)));
   // If we reset optimized, we get live on entry.
   LoadAccess->resetOptimized();
-  MSSA.dump();
 
   EXPECT_TRUE(
       MSSA.isLiveOnEntryDef(Walker->getClobberingMemoryAccess(LoadInst)));
@@ -546,8 +537,7 @@ TEST_F(MemorySSATest, RemoveMemoryAccess) {
     MemoryAccess *Operand = cast<MemoryAccess>(&*Op);
     EXPECT_TRUE(MSSA.isLiveOnEntryDef(Operand));
   }
-  MSSA.dump();
-  EXPECT_FALSE(true);
+
   // Now we try to remove the single valued phi
   Updater.removeMemoryAccess(DefiningAccess);
   MSSA.verifyMemorySSA();
@@ -790,12 +780,10 @@ TEST_F(MemorySSATest, WalkerReopt) {
   // Create the load memory access pointing to an unoptimized place.
   MemoryUse *NewLoadAccess = cast<MemoryUse>(Updater.createMemoryAccessInBB(
       LIA, MSSA.getMemoryAccess(SIB), LIA->getParent(), MemorySSA::End));
-  MSSA.dump();
   // This should it cause it to be optimized
   EXPECT_EQ(Walker->getClobberingMemoryAccess(NewLoadAccess), LoadClobber);
   EXPECT_EQ(NewLoadAccess->getDefiningAccess(), LoadClobber);
-  MSSA.dump();
-  EXPECT_FALSE(true);
+
 }
 
 // Test out MemorySSAUpdater::moveBefore
@@ -821,13 +809,14 @@ TEST_F(MemorySSATest, MoveAboveMemoryDef) {
   MemorySSA &MSSA = *Analyses->MSSA;
   MemorySSAWalker &Walker = *Analyses->Walker;
 
+  MSSA.dump();
   MemorySSAUpdater Updater(&MSSA);
   StoreC->moveBefore(StoreB);
   Updater.moveBefore(cast<MemoryDef>(MSSA.getMemoryAccess(StoreC)),
                      cast<MemoryDef>(MSSA.getMemoryAccess(StoreB)));
 
   MSSA.verifyMemorySSA();
-
+  MSSA.dump();
   EXPECT_EQ(MSSA.getMemoryAccess(StoreB)->getDefiningAccess(),
             MSSA.getMemoryAccess(StoreC));
   EXPECT_EQ(MSSA.getMemoryAccess(StoreC)->getDefiningAccess(),
@@ -836,9 +825,12 @@ TEST_F(MemorySSATest, MoveAboveMemoryDef) {
             MSSA.getMemoryAccess(StoreA1));
   EXPECT_EQ(Walker.getClobberingMemoryAccess(LoadB),
             MSSA.getMemoryAccess(StoreB));
+  MSSA.dump();
   EXPECT_EQ(Walker.getClobberingMemoryAccess(LoadC),
             MSSA.getMemoryAccess(StoreC));
 
+  MSSA.dump();
+  EXPECT_FALSE(true);
   // exercise block numbering
   EXPECT_TRUE(MSSA.locallyDominates(MSSA.getMemoryAccess(StoreC),
                                     MSSA.getMemoryAccess(StoreB)));

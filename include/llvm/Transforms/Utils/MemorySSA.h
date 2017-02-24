@@ -111,6 +111,7 @@ class raw_ostream;
 namespace MSSAHelpers {
 struct AllAccessTag {};
 struct DefsOnlyTag {};
+struct InvariantGroupOnlyTag {};
 }
 
 enum {
@@ -129,7 +130,8 @@ using const_memoryaccess_def_iterator =
 class MemoryAccess
     : public User,
       public ilist_node<MemoryAccess, ilist_tag<MSSAHelpers::AllAccessTag>>,
-      public ilist_node<MemoryAccess, ilist_tag<MSSAHelpers::DefsOnlyTag>> {
+      public ilist_node<MemoryAccess, ilist_tag<MSSAHelpers::DefsOnlyTag>>,
+      public ilist_node<MemoryAccess, ilist_tag<MSSAHelpers::InvariantGroupOnlyTag>> {
 public:
   using AllAccessType =
       ilist_node<MemoryAccess, ilist_tag<MSSAHelpers::AllAccessTag>>;
@@ -578,7 +580,8 @@ public:
   using DefsList =
       simple_ilist<MemoryAccess, ilist_tag<MSSAHelpers::DefsOnlyTag>>;
 
-  using InvariantGroupAccesses = SmallVector<MemoryUseOrDef *, 4>;
+  using InvariantGroupList =
+        simple_ilist<MemoryAccess, ilist_tag<MSSAHelpers::InvariantGroupOnlyTag>>;
 
   /// \brief Return the list of MemoryAccess's for a given basic block.
   ///
@@ -656,12 +659,6 @@ protected:
                              AccessList::iterator);
   MemoryUseOrDef *createDefinedAccess(Instruction *, MemoryAccess *);
 
-  const InvariantGroupAccesses *
-  getInvariantGroupBlockAccesses(const BasicBlock *BB) const {
-    auto It = PerBlockInvariantGroupAccesses.find(BB);
-    return It == PerBlockInvariantGroupAccesses.end() ? nullptr : &It->second;
-  }
-
 private:
   class CachingWalker;
   class OptimizeUses;
@@ -674,7 +671,7 @@ private:
   using AccessMap = DenseMap<const BasicBlock *, std::unique_ptr<AccessList>>;
   using DefsMap = DenseMap<const BasicBlock *, std::unique_ptr<DefsList>>;
   using UseOrDefAccessMap =
-      DenseMap<const BasicBlock *, InvariantGroupAccesses>;
+      DenseMap<const BasicBlock *, std::unique_ptr<InvariantGroupList>>;
 
   void
   determineInsertionPoint(const SmallPtrSetImpl<BasicBlock *> &DefiningBlocks);
@@ -693,6 +690,8 @@ private:
                   bool SkipVisited = false, bool RenameAllUses = false);
   AccessList *getOrCreateAccessList(const BasicBlock *);
   DefsList *getOrCreateDefsList(const BasicBlock *);
+  InvariantGroupList *getInvariantGroupBlockAccesses(const BasicBlock *BB);
+
   void renumberBlock(const BasicBlock *) const;
   AliasAnalysis *AA;
   DominatorTree *DT;
