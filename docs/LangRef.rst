@@ -1063,6 +1063,17 @@ Currently, only the following parameter attributes are defined:
     function, returning a pointer to allocated storage disjoint from the
     storage for any other object accessible to the caller.
 
+``noreplace``
+    This indicates that the return value of a function can't be replaced with
+    other. E.g:
+    .. code-block:: llvm
+      declare i8 * @function() noreplace readnone
+      %a = call i8* @function()
+      %b = call i8* @function()
+    Here %b can't be replaced with %a even that optimizer knows that %a and %b
+    are the same. Note that it doesn't guarantee that %a and %b won't be
+    discarded if it would have no uses.
+
 ``nocapture``
     This indicates that the callee does not make any copies of the
     pointer that outlive the callee itself. This is not a valid
@@ -5113,7 +5124,7 @@ Examples:
    ...
    declare void @foo(i8*)
    declare i8* @getPointer(i8*)
-   declare i8* @llvm.invariant.group.barrier(i8*)
+   declare i8* @llvm.invariant.group.barrier(i8* p returned) noreplace readnone nounwind
    
    !0 = !{!"magic ptr"}
    !1 = !{!"other ptr"}
@@ -12236,7 +12247,7 @@ Syntax:
 
 ::
 
-      declare i8* @llvm.invariant.group.barrier(i8* <ptr>)
+      declare i8* @llvm.invariant.group.barrier(i8* <ptr> returned) noreplace readnone nounwind
 
 Overview:
 """""""""
