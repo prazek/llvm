@@ -87,6 +87,8 @@ class ReadNone<int argNo> : IntrinsicProperty {
   int ArgNo = argNo;
 }
 
+def NoReplace : IntrinsicProperty;
+
 def IntrNoReturn : IntrinsicProperty;
 
 // IntrNoduplicate - Calls to this intrinsic cannot be duplicated.
@@ -617,7 +619,7 @@ def int_invariant_end   : Intrinsic<[],
 
 def int_invariant_group_barrier : Intrinsic<[llvm_ptr_ty],
                                             [llvm_ptr_ty],
-                                            [IntrNoMem]>;
+                                            [IntrNoMem, NoReplace, Returned<0>]>;
 
 //===------------------------ Stackmap Intrinsics -------------------------===//
 //

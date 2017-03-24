@@ -482,6 +482,16 @@ public:
                          static_cast<const Value *>(this)->stripPointerCasts());
   }
 
+  /// \brief Strip off pointer casts and all-zero GEPs without stripping
+  /// @llvm.noalias intrinsics.
+  ///
+  /// Returns the original uncasted value.  If this is called on a non-pointer
+  /// value, it returns 'this'.
+  Value *stripPointerCastsExceptNoReplace();
+  const Value *stripPointerCastsExceptNoReplace() const {
+    return const_cast<Value*>(this)->stripPointerCastsExceptNoReplace();
+  }
+
   /// \brief Strip off pointer casts and all-zero GEPs.
   ///
   /// Returns the original uncasted value.  If this is called on a non-pointer

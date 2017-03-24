@@ -50,6 +50,21 @@ entry:
 ; CHECK: ret i8 42
     ret i8 %b
 }
+; CHECK-LABEL: define void @twoBarriers(i8* %ptr)
+define void @twoBarriers(i8* %ptr) {
+; CHECK: %b1 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+  %b1 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+; CHECK: %b2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+  %b2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+
+; CHECK: call void @foo(i8* %b1)
+  call void @foo(i8* %ptr)
+; CHECK: call void @foo(i8* %b1)
+  call void @foo(i8* %b1)
+; CHECK: call void @foo(i8* %b2)
+  call void @foo(i8* %b2)
+  ret void
+}
 
 ; CHECK-LABEL: define i8 @unoptimizable1() {
 define i8 @unoptimizable1() {
@@ -236,16 +251,30 @@ entry:
 ; CHECK: ret i8 %a
     ret i8 %a
 }
-
 ; CHECK-LABEL: define i8 @unoptimizable4() {
-define i8 @unoptimizable4() {
+define i8 @optimizable4() {
+entry:
+    %ptr = alloca i8
+    store i8 42, i8* %ptr, !invariant.group !0
+    call void foo(i8* %ptr)
+    %ptr2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+    %a = load i8, i8* %ptr2, !invariant.group !0
+
+; CHECK: ret i8 %a
+    ret i8 %a
+}
+
+
+
+; CHECK-LABEL: define i8 @optimizable4() {
+define i8 @optimizable4() {
 entry:
     %ptr = alloca i8
     store i8 42, i8* %ptr, !invariant.group !0
     %ptr2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
-    %a = load i8, i8* %ptr2, !invariant.group !0
+    %a = load i8, i8* %ptr2
     
-; CHECK: ret i8 %a
+; CHECK: ret i8 42
     ret i8 %a
 }
 

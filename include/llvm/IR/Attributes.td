@@ -76,6 +76,9 @@ def Nest : EnumAttr<"nest">;
 /// Considered to not alias after call.
 def NoAlias : EnumAttr<"noalias">;
 
+/// Result can't be replaced with another value.
+def NoReplace : EnumAttr<"noreplace">;
+
 /// Callee isn't recognized as a builtin.
 def NoBuiltin : EnumAttr<"nobuiltin">;
 

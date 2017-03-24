@@ -278,6 +278,8 @@ std::string Attribute::getAsString(bool InAttrGrp) const {
     return "nest";
   if (hasAttribute(Attribute::NoAlias))
     return "noalias";
+  if (hasAttribute(Attribute::NoReplace))
+    return "noreplace";
   if (hasAttribute(Attribute::NoBuiltin))
     return "nobuiltin";
   if (hasAttribute(Attribute::NoCapture))

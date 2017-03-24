@@ -437,7 +437,7 @@ enum PointerStripKind {
 };
 
 template <PointerStripKind StripKind>
-static const Value *stripPointerCastsAndOffsets(const Value *V) {
+static Value *stripPointerCastsAndOffsets(Value *V, bool StripNoReplace = true) {
   if (!V->getType()->isPointerTy())
     return V;
 
@@ -474,10 +474,11 @@ static const Value *stripPointerCastsAndOffsets(const Value *V) {
     } else {
       if (auto CS = ImmutableCallSite(V))
         if (const Value *RV = CS.getReturnedArgOperand()) {
-          V = RV;
-          continue;
+          if (StripNoReplace || !CS.hasFnAttr(Attribute::NoReplace)) {
+            V = RV;
+            continue;
+          }
         }
-
       return V;
     }
     assert(V->getType()->isPointerTy() && "Unexpected operand type!");
@@ -490,6 +491,11 @@ static const Value *stripPointerCastsAndOffsets(const Value *V) {
 const Value *Value::stripPointerCasts() const {
   return stripPointerCastsAndOffsets<PSK_ZeroIndicesAndAliases>(this);
 }
+
+Value *Value::stripPointerCastsExceptNoReplace() {
+  return stripPointerCastsAndOffsets<PSK_ZeroIndicesAndAliases>(this, false);
+}
+
 
 const Value *Value::stripPointerCastsNoFollowAliases() const {
   return stripPointerCastsAndOffsets<PSK_ZeroIndices>(this);

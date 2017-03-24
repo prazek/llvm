@@ -1350,6 +1350,7 @@ void Verifier::verifyAttributeTypes(AttributeList Attrs, unsigned Idx,
     if (I->getKindAsEnum() == Attribute::NoReturn ||
         I->getKindAsEnum() == Attribute::NoUnwind ||
         I->getKindAsEnum() == Attribute::NoInline ||
+        I->getKindAsEnum() == Attribute::NoReplace ||
         I->getKindAsEnum() == Attribute::AlwaysInline ||
         I->getKindAsEnum() == Attribute::OptimizeForSize ||
         I->getKindAsEnum() == Attribute::StackProtect ||
