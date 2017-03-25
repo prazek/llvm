@@ -200,7 +200,7 @@ struct CallValue {
       return false;
 
     CallInst *CI = dyn_cast<CallInst>(Inst);
-    if (!CI || !CI->onlyReadsMemory())
+    if (!CI || !CI->onlyReadsMemory() || !CI->isReplacable())
       return false;
     return true;
   }

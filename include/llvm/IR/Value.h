@@ -264,6 +264,8 @@ public:
   /// \note It is an error to call V->takeName(V).
   void takeName(Value *V);
 
+  bool isReplacable() const;
+
   /// \brief Change all uses of this to point to a new Value.
   ///
   /// Go through the uses list for this definition and make each use point to

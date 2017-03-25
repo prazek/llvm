@@ -256,7 +256,7 @@ define i8 @optimizable4() {
 entry:
     %ptr = alloca i8
     store i8 42, i8* %ptr, !invariant.group !0
-    call void foo(i8* %ptr)
+    call void @foo(i8* %ptr)
     %ptr2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
     %a = load i8, i8* %ptr2, !invariant.group !0
 
@@ -264,10 +264,8 @@ entry:
     ret i8 %a
 }
 
-
-
 ; CHECK-LABEL: define i8 @optimizable4() {
-define i8 @optimizable4() {
+define i8 @optimizable5() {
 entry:
     %ptr = alloca i8
     store i8 42, i8* %ptr, !invariant.group !0
@@ -277,6 +275,50 @@ entry:
 ; CHECK: ret i8 42
     ret i8 %a
 }
+
+; CHECK-LABEL: define i8 @unoptimizable5()
+define i8 @unoptimizable5() {
+entry:
+    %ptr = alloca i8
+    store i8 42, i8* %ptr, !invariant.group !0
+; CHECK: call i8* @llvm.invariant.group.barrier
+; CHECK: call i8* @llvm.invariant.group.barrier
+    %ptr2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+    %ptr3 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+; CHECK: call void @foo(i8* %ptr2)
+    call void @foo(i8* %ptr2)
+; CHECK: call void @foo(i8* %ptr3)
+    call void @foo(i8* %ptr3)
+
+    ret i8 42
+}
+; After knowing that that 2 pointers alias (%b1 and %b2) because of
+; unreachable block, check if one pointer is not replaced with another
+define i8 @comparision() {
+entry:
+    %ptr = alloca i8
+    store i8 42, i8* %ptr, !invariant.group !0
+    call void @foo(i8* %ptr)
+
+    %b1 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+    store i8 43, i8* %b1, !invariant.group !0
+
+    %b2 = call i8* @llvm.invariant.group.barrier(i8* %ptr)
+    %0 = icmp eq i8* %b1, %b2
+    br i1 %0, label %exit, label %next
+exit:
+    unreachable
+
+next:
+    ; CHECK: call void @foo(i8* %b2)
+    call void @foo(i8* %b2)
+    ; CHECK: %x = load i8, i8* %b2, !invariant.group
+    %x = load i8, i8* %b2, !invariant.group !0
+    ; CHECK ret i8 %x
+    ret i8 %x
+}
+
+
 
 ; CHECK-LABEL: define i8 @volatile1() {
 define i8 @volatile1() {

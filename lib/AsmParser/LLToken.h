@@ -180,6 +180,7 @@ enum Kind {
   kw_naked,
   kw_nest,
   kw_noalias,
+  kw_noreplace,
   kw_nobuiltin,
   kw_nocapture,
   kw_noduplicate,

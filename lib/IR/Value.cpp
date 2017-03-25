@@ -398,6 +398,13 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
     BB->replaceSuccessorsPhiUsesWith(cast<BasicBlock>(New));
 }
 
+bool Value::isReplacable() const {
+  if (auto *CI = dyn_cast<CallInst>(this))
+    if (CI->hasFnAttr(Attribute::NoReplace))
+      return false;
+  return true;
+}
+
 void Value::replaceAllUsesWith(Value *New) {
   doRAUW(New, false /* NoMetadata */);
 }
