@@ -272,6 +272,8 @@ std::string Attribute::getAsString(bool InAttrGrp) const {
     return "jumptable";
   if (hasAttribute(Attribute::MinSize))
     return "minsize";
+  if (hasAttribute(Attribute::MustAlias))
+    return "mustalias";
   if (hasAttribute(Attribute::Naked))
     return "naked";
   if (hasAttribute(Attribute::Nest))

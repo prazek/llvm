@@ -69,6 +69,10 @@ class Returned<int argNo> : IntrinsicProperty {
   int ArgNo = argNo;
 }
 
+class MustAlias<int argNo> : IntrinsicProperty {
+  int ArgNo = argNo;
+}
+
 // ReadOnly - The specified argument pointer is not written to through the
 // pointer by the intrinsic.
 class ReadOnly<int argNo> : IntrinsicProperty {
@@ -617,7 +621,8 @@ def int_invariant_end   : Intrinsic<[],
 
 def int_invariant_group_barrier : Intrinsic<[llvm_ptr_ty],
                                             [llvm_ptr_ty],
-                                            [IntrReadMem, IntrArgMemOnly]>;
+                                            [IntrReadMem, IntrArgMemOnly,
+                                             MustAlias<0>]>;
 
 //===------------------------ Stackmap Intrinsics -------------------------===//
 //

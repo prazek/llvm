@@ -560,6 +560,12 @@ void IntrinsicEmitter::EmitAttributes(const CodeGenIntrinsicTable &Ints,
 
         do {
           switch (intrinsic.ArgumentAttributes[ai].second) {
+          case CodeGenIntrinsic::MustAlias:
+              if (addComma)
+                OS << ",";
+              OS << "Attribute::MustAlias";
+              addComma = true;
+              break;
           case CodeGenIntrinsic::NoCapture:
             if (addComma)
               OS << ",";
@@ -567,10 +573,10 @@ void IntrinsicEmitter::EmitAttributes(const CodeGenIntrinsicTable &Ints,
             addComma = true;
             break;
           case CodeGenIntrinsic::Returned:
-            if (addComma)
-              OS << ",";
-            OS << "Attribute::Returned";
-            addComma = true;
+              if (addComma)
+                OS << ",";
+              OS << "Attribute::Returned";
+              addComma = true;
             break;
           case CodeGenIntrinsic::ReadOnly:
             if (addComma)

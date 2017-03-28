@@ -67,6 +67,9 @@ def JumpTable : EnumAttr<"jumptable">;
 /// Function must be optimized for size first.
 def MinSize : EnumAttr<"minsize">;
 
+/// Return value is aliasing it's argument.
+def MustAlias : EnumAttr<"mustalias">;
+
 /// Naked function.
 def Naked : EnumAttr<"naked">;
 

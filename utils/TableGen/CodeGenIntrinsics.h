@@ -123,7 +123,10 @@ struct CodeGenIntrinsic {
   /// True if the intrinsic is marked as convergent.
   bool isConvergent;
 
-  enum ArgAttribute { NoCapture, Returned, ReadOnly, WriteOnly, ReadNone };
+  /// True if the intrinsic is marked as mustalias.
+  bool isMustAlias;
+
+  enum ArgAttribute { MustAlias, NoCapture, Returned, ReadOnly, WriteOnly, ReadNone };
   std::vector<std::pair<unsigned, ArgAttribute>> ArgumentAttributes;
 
   CodeGenIntrinsic(Record *R);
