@@ -617,7 +617,7 @@ def int_invariant_end   : Intrinsic<[],
 
 def int_invariant_group_barrier : Intrinsic<[llvm_ptr_ty],
                                             [llvm_ptr_ty],
-                                            [IntrNoMem]>;
+                                            [IntrReadMem, IntrArgMemOnly]>;
 
 //===------------------------ Stackmap Intrinsics -------------------------===//
 //
