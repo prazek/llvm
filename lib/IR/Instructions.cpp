@@ -331,17 +331,25 @@ CallInst *CallInst::Create(CallInst *CI, ArrayRef<OperandBundleDef> OpB,
   return NewCI;
 }
 
-Value *CallInst::getReturnedArgOperand() const {
+Value* CallInst::getAttributeArgOperand(Attribute::AttrKind Kind) const {
   unsigned Index;
 
-  if (Attrs.hasAttrSomewhere(Attribute::Returned, &Index) && Index)
+  if (Attrs.hasAttrSomewhere(Kind, &Index) && Index)
     return getArgOperand(Index-1);
   if (const Function *F = getCalledFunction())
-    if (F->getAttributes().hasAttrSomewhere(Attribute::Returned, &Index) &&
-        Index)
+    if (F->getAttributes().hasAttrSomewhere(Kind, &Index) &&
+      Index)
       return getArgOperand(Index-1);
-      
+
   return nullptr;
+}
+
+Value *CallInst::getReturnedArgOperand() const {
+  return getAttributeArgOperand(Attribute::Returned);
+}
+
+Value *CallInst::getMustAliasArgOperand() const {
+  return getAttributeArgOperand(Attribute::MustAlias);
 }
 
 void CallInst::addAttribute(unsigned i, Attribute::AttrKind Kind) {
@@ -676,6 +684,12 @@ unsigned InvokeInst::getNumSuccessorsV() const {
 }
 void InvokeInst::setSuccessorV(unsigned idx, BasicBlock *B) {
   return setSuccessor(idx, B);
+}
+
+/// If one of the arguments has the 'mustalias' attribute, return its
+/// operand value. Otherwise, return nullptr.
+Value *InvokeInst::getMustAliasArgOperand() const {
+  return nullptr; // TODO
 }
 
 Value *InvokeInst::getReturnedArgOperand() const {

@@ -295,6 +295,10 @@ public:
     CALLSITE_DELEGATE_GETTER(getArgOperand(i));
   }
 
+  ValTy *getMustAliasArgOperand() const {
+    CALLSITE_DELEGATE_GETTER(getMustAliasArgOperand());
+  }
+
   ValTy *getReturnedArgOperand() const {
     CALLSITE_DELEGATE_GETTER(getReturnedArgOperand());
   }

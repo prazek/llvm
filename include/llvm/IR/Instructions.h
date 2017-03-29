@@ -1623,6 +1623,10 @@ public:
     return getOperandUse(i);
   }
 
+  /// If one of the arguments has the 'mustalias' attribute, return its
+  /// operand value. Otherwise, return nullptr.
+  Value *getMustAliasArgOperand() const;
+
   /// If one of the arguments has the 'returned' attribute, return its
   /// operand value. Otherwise, return nullptr.
   Value *getReturnedArgOperand() const;
@@ -1879,6 +1883,10 @@ private:
                                              Kind);
     return false;
   }
+
+  /// If one of the arguments has the @param Kind attribute, return its
+  /// operand value. Otherwise, return nullptr.
+  Value* getAttributeArgOperand(Attribute::AttrKind Kind) const;
 
   // Shadow Instruction::setInstructionSubclassData with a private forwarding
   // method so that subclasses cannot accidentally use it.
@@ -3661,6 +3669,10 @@ public:
     assert(i < getNumArgOperands() && "Out of bounds!");
     return getOperandUse(i);
   }
+
+  /// If one of the arguments has the 'mustalias' attribute, return its
+  /// operand value. Otherwise, return nullptr.
+  Value *getMustAliasArgOperand() const;
 
   /// If one of the arguments has the 'returned' attribute, return its
   /// operand value. Otherwise, return nullptr.

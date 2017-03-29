@@ -627,6 +627,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(inreg);
   KEYWORD(jumptable);
   KEYWORD(minsize);
+  KEYWORD(mustalias);
   KEYWORD(naked);
   KEYWORD(nest);
   KEYWORD(noalias);

@@ -1128,6 +1128,7 @@ bool LLParser::ParseFnAttributeValuePairs(AttrBuilder &B,
     case lltok::kw_dereferenceable_or_null:
     case lltok::kw_inalloca:
     case lltok::kw_nest:
+    case lltok::kw_mustalias:
     case lltok::kw_noalias:
     case lltok::kw_nocapture:
     case lltok::kw_nonnull:
@@ -1398,6 +1399,7 @@ bool LLParser::ParseOptionalParamAttrs(AttrBuilder &B) {
     case lltok::kw_inalloca:        B.addAttribute(Attribute::InAlloca); break;
     case lltok::kw_inreg:           B.addAttribute(Attribute::InReg); break;
     case lltok::kw_nest:            B.addAttribute(Attribute::Nest); break;
+    case lltok::kw_mustalias:       B.addAttribute(Attribute::MustAlias); break;
     case lltok::kw_noalias:         B.addAttribute(Attribute::NoAlias); break;
     case lltok::kw_nocapture:       B.addAttribute(Attribute::NoCapture); break;
     case lltok::kw_nonnull:         B.addAttribute(Attribute::NonNull); break;
@@ -1493,6 +1495,7 @@ bool LLParser::ParseOptionalReturnAttrs(AttrBuilder &B) {
     case lltok::kw_byval:
     case lltok::kw_inalloca:
     case lltok::kw_nest:
+    case lltok::kw_mustalias:
     case lltok::kw_nocapture:
     case lltok::kw_returned:
     case lltok::kw_sret:

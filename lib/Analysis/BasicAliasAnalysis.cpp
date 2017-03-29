@@ -393,12 +393,16 @@ bool BasicAAResult::DecomposeGEPExpression(const Value *V,
 
     const GEPOperator *GEPOp = dyn_cast<GEPOperator>(Op);
     if (!GEPOp) {
-      if (auto CS = ImmutableCallSite(V))
+      if (auto CS = ImmutableCallSite(V)) {
         if (const Value *RV = CS.getReturnedArgOperand()) {
           V = RV;
           continue;
         }
-
+        if (const Value *RV = CS.getMustAliasArgOperand()) {
+          V = RV;
+          continue;
+        }
+      }
       // If it's not a GEP, hand it off to SimplifyInstruction to see if it
       // can come up with something. This matches what GetUnderlyingObject does.
       if (const Instruction *I = dyn_cast<Instruction>(V))
