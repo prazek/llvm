@@ -435,6 +435,14 @@ bool llvm::hoistRegion(DomTreeNode *N, AliasAnalysis *AA, LoopInfo *LI,
       // if all of the operands of the instruction are loop invariant and if it
       // is safe to hoist the instruction.
       //
+
+      dbgs() << "hoisting maybe: " << I << "\n" << CurLoop->hasLoopInvariantOperands(&I)
+             << " " << canSinkOrHoistInst(I, AA, DT, CurLoop, CurAST, SafetyInfo, ORE)
+             << " " << isSafeToExecuteUnconditionally(
+        I, DT, CurLoop, SafetyInfo, ORE,
+        CurLoop->getLoopPreheader()->getTerminator()) << "\n";
+
+
       if (CurLoop->hasLoopInvariantOperands(&I) &&
           canSinkOrHoistInst(I, AA, DT, CurLoop, CurAST, SafetyInfo, ORE) &&
           isSafeToExecuteUnconditionally(
@@ -484,6 +492,20 @@ void llvm::computeLoopSafetyInfo(LoopSafetyInfo *SafetyInfo, Loop *CurLoop) {
     if (Constant *PersonalityFn = Fn->getPersonalityFn())
       if (isFuncletEHPersonality(classifyEHPersonality(PersonalityFn)))
         SafetyInfo->BlockColors = colorEHFunclets(*Fn);
+}
+
+static bool isLoadInvariantGroupInLoop(LoadInst *LI, DominatorTree *DT,
+                                       Loop *CurLoop) {
+  if (!LI->getMetadata(LLVMContext::MD_invariant_group))
+    return false;
+
+  // TODO can I do this without casting to Instruction?
+  if (auto *PointerOperandInst = dyn_cast<Instruction>(LI->getPointerOperand())) {
+
+    return DT->properlyDominates(PointerOperandInst->getParent(),
+                                 CurLoop->getHeader());
+  }
+  return false;
 }
 
 // Return true if LI is invariant within scope of the loop. LI is invariant if
@@ -553,6 +575,9 @@ bool llvm::canSinkOrHoistInst(Instruction &I, AAResults *AA, DominatorTree *DT,
     if (AA->pointsToConstantMemory(LI->getOperand(0)))
       return true;
     if (LI->getMetadata(LLVMContext::MD_invariant_load))
+      return true;
+
+    if (isLoadInvariantGroupInLoop(LI, DT, CurLoop))
       return true;
 
     // This checks for an invariant.start dominating the load.
@@ -859,7 +884,12 @@ static bool hoist(Instruction &I, const DominatorTree *DT, const Loop *CurLoop,
       // time in isGuaranteedToExecute if we don't actually have anything to
       // drop.  It is a compile time optimization, not required for correctness.
       !isGuaranteedToExecute(I, DT, CurLoop, SafetyInfo))
-    I.dropUnknownNonDebugMetadata();
+    I.dropUnknownNonDebugMetadata({LLVMContext::MD_invariant_group,
+                                  LLVMContext::MD_invariant_load,
+                                   LLVMContext::MD_nonnull,
+                                  LLVMContext::MD_dereferenceable,
+                                   LLVMContext::MD_dereferenceable_or_null
+                                  });
 
   // Move the new node to the Preheader, before its terminator.
   I.moveBefore(Preheader->getTerminator());
