@@ -434,15 +434,6 @@ bool llvm::hoistRegion(DomTreeNode *N, AliasAnalysis *AA, LoopInfo *LI,
       // Try hoisting the instruction out to the preheader.  We can only do this
       // if all of the operands of the instruction are loop invariant and if it
       // is safe to hoist the instruction.
-      //
-
-      dbgs() << "hoisting maybe: " << I << "\n" << CurLoop->hasLoopInvariantOperands(&I)
-             << " " << canSinkOrHoistInst(I, AA, DT, CurLoop, CurAST, SafetyInfo, ORE)
-             << " " << isSafeToExecuteUnconditionally(
-        I, DT, CurLoop, SafetyInfo, ORE,
-        CurLoop->getLoopPreheader()->getTerminator()) << "\n";
-
-
       if (CurLoop->hasLoopInvariantOperands(&I) &&
           canSinkOrHoistInst(I, AA, DT, CurLoop, CurAST, SafetyInfo, ORE) &&
           isSafeToExecuteUnconditionally(

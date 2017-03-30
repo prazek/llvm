@@ -11,14 +11,14 @@ entry:
 
 while.body.lr.ph:                                 ; preds = %entry
   %b = bitcast %struct.A* %0 to void (%struct.A*)***
-; CHECK:   %vtable = load void (%struct.A*)**, void (%struct.A*)*** %0, align 8, !invariant.group !0
-; CHECK-NEXT:  %1 = load void (%struct.A*)*, void (%struct.A*)** %vtable, align 8, !invariant.load !0
+; CHECK:   %vtable = load {{.*}} %b, align 8, !dereferenceable {{.*}}, !invariant.group
+; CHECK-NEXT:  %1 = load void (%struct.A*)*, void (%struct.A*)** %vtable, align 8, !invariant.load
 ; CHECK-NEXT:  br label %while.body
   br label %while.body
 ; CHECK-NOT: load
 while.body:                                       ; preds = %while.body.lr.ph, %while.body
-  %vtable = load void (%struct.A*)**, void (%struct.A*)*** %b, align 8, !invariant.group !0, !nonnull !0, !dereferencable !0
-  %1 = load void (%struct.A*)*, void (%struct.A*)** %vtable, align 8, !nonnull !0, !invariant.load !0, !dereferencable !0
+  %vtable = load void (%struct.A*)**, void (%struct.A*)*** %b, align 8, !dereferenceable !1, !invariant.group !0
+  %1 = load void (%struct.A*)*, void (%struct.A*)** %vtable, align 8, !invariant.load !0
   tail call void %1(%struct.A* %0)
   %call = tail call i32 @_Z3barv()
   %tobool = icmp eq i32 %call, 0
@@ -57,7 +57,7 @@ for.body:                                         ; preds = %for.body.preheader,
   %arrayidx = getelementptr inbounds %struct.A*, %struct.A** %a, i64 %indvars.iv
   %0 = load %struct.A*, %struct.A** %arrayidx, align 8
   %1 = bitcast %struct.A* %0 to void (%struct.A*)***
-  %vtable = load void (%struct.A*)**, void (%struct.A*)*** %1, align 8, !invariant.group !0
+  %vtable = load void (%struct.A*)**, void (%struct.A*)*** %1, align 8, !dereferenceable !1, !invariant.group !0
   %2 = load void (%struct.A*)*, void (%struct.A*)** %vtable, align 8, !invariant.load !0
   tail call void %2(%struct.A* %0)
   %indvars.iv.next = add nuw i64 %indvars.iv, 1
@@ -69,3 +69,4 @@ for.body:                                         ; preds = %for.body.preheader,
 
 
 !0 = !{}
+!1 = !{i64 8}
