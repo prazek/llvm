@@ -489,9 +489,10 @@ public:
   ///
   /// Returns the original uncasted value.  If this is called on a non-pointer
   /// value, it returns 'this'.
-  Value *stripPointerCastsExceptNoReplace();
-  const Value *stripPointerCastsExceptNoReplace() const {
-    return const_cast<Value*>(this)->stripPointerCastsExceptNoReplace();
+  const Value *stripPointerCastsExceptNoReplace() const;
+  Value *stripPointerCastsExceptNoReplace() {
+    return const_cast<Value *>(
+                         static_cast<const Value *>(this)->stripPointerCastsExceptNoReplace());
   }
 
   /// \brief Strip off pointer casts and all-zero GEPs.

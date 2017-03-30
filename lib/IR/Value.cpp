@@ -444,7 +444,7 @@ enum PointerStripKind {
 };
 
 template <PointerStripKind StripKind>
-static Value *stripPointerCastsAndOffsets(Value *V, bool StripNoReplace = true) {
+static const Value *stripPointerCastsAndOffsets(const Value *V, bool StripNoReplace = true) {
   if (!V->getType()->isPointerTy())
     return V;
 
@@ -499,7 +499,7 @@ const Value *Value::stripPointerCasts() const {
   return stripPointerCastsAndOffsets<PSK_ZeroIndicesAndAliases>(this);
 }
 
-Value *Value::stripPointerCastsExceptNoReplace() {
+const Value *Value::stripPointerCastsExceptNoReplace() const {
   return stripPointerCastsAndOffsets<PSK_ZeroIndicesAndAliases>(this, false);
 }
 
