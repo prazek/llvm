@@ -295,13 +295,11 @@ enum OverwriteResult { OW_Begin, OW_Complete, OW_End, OW_Unknown };
 /// 'Earlier' location is completely overwritten by 'Later', 'OW_Begin' if the
 /// beginning of the 'Earlier' location is overwritten by 'Later', or
 /// 'OW_Unknown' if nothing can be determined.
-static OverwriteResult isOverwrite(const MemoryLocation &Later,
-                                   const MemoryLocation &Earlier,
-                                   const DataLayout &DL,
-                                   const TargetLibraryInfo &TLI,
-                                   int64_t &EarlierOff, int64_t &LaterOff,
-                                   Instruction *DepWrite,
-                                   InstOverlapIntervalsTy &IOL) {
+static OverwriteResult
+isOverwrite(const MemoryLocation &Later, const MemoryLocation &Earlier,
+            const DataLayout &DL, const TargetLibraryInfo &TLI,
+            int64_t &EarlierOff, int64_t &LaterOff, Instruction *DepWrite,
+            InstOverlapIntervalsTy &IOL, AliasAnalysis &AA) {
   // If we don't know the sizes of either access, then we can't do a comparison.
   if (Later.Size == MemoryLocation::UnknownSize ||
       Earlier.Size == MemoryLocation::UnknownSize)
@@ -312,7 +310,7 @@ static OverwriteResult isOverwrite(const MemoryLocation &Later,
 
   // If the start pointers are the same, we just have to compare sizes to see if
   // the later store was larger than the earlier store.
-  if (P1 == P2) {
+  if (P1 == P2 || AA.isMustAlias(P1, P2)) {
     // Make sure that the Later size is >= the Earlier size.
     if (Later.Size >= Earlier.Size)
       return OW_Complete;
@@ -1097,9 +1095,8 @@ static bool eliminateDeadStores(BasicBlock &BB, AliasAnalysis *AA,
       if (isRemovable(DepWrite) &&
           !isPossibleSelfRead(Inst, Loc, DepWrite, *TLI, *AA)) {
         int64_t InstWriteOffset, DepWriteOffset;
-        OverwriteResult OR =
-            isOverwrite(Loc, DepLoc, DL, *TLI, DepWriteOffset, InstWriteOffset,
-                        DepWrite, IOL);
+        OverwriteResult OR = isOverwrite(Loc, DepLoc, DL, *TLI, DepWriteOffset,
+                                         InstWriteOffset, DepWrite, IOL, *AA);
         if (OR == OW_Complete) {
           DEBUG(dbgs() << "DSE: Remove Dead Store:\n  DEAD: "
                 << *DepWrite << "\n  KILLER: " << *Inst << '\n');
