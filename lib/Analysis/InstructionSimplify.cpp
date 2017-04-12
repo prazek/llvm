@@ -4313,6 +4313,11 @@ static bool IsIdempotent(Intrinsic::ID ID) {
   }
 }
 
+static bool isConditionallyIdempotent(Intrinsic::ID ID, const Value* Arg) {
+  // invariant.group.barrier is idempotent only if it has one use.
+  return ID == Intrinsic::invariant_group_barrier && Arg->hasOneUse();
+}
+
 static Value *SimplifyRelativeLoad(Constant *Ptr, Constant *Offset,
                                    const DataLayout &DL) {
   GlobalValue *PtrSym;
@@ -4394,7 +4399,7 @@ static Value *SimplifyIntrinsic(Function *F, IterTy ArgBegin, IterTy ArgEnd,
   // Unary Ops
   if (NumOperands == 1) {
     // Perform idempotent optimizations
-    if (IsIdempotent(IID)) {
+    if (IsIdempotent(IID) || isConditionallyIdempotent(IID, *ArgBegin)) {
       if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(*ArgBegin)) {
         if (II->getIntrinsicID() == IID)
           return II;
