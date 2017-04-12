@@ -432,6 +432,60 @@ _Z2g2R1A.exit:                                    ; preds = %_Z2g2R1A.exit.loope
   ret void
 }
 
+; Check if barrier is being simplified based on idempotent propery,
+; but only if it has one use.
+; CHECK-LABEL: i8* @simplifyBarrier(i8* %p)
+define i8* @simplifyBarrier(i8* %p) {
+; CHECK: %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+; CHECK-NOT: %b2 = call i8* @llvm.invariant.group.barrier
+  %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+  %b2 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  call void @foo(i8* %b2)
+
+; CHECK: %b3 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  %b3 = call i8* @llvm.invariant.group.barrier(i8* %b2)
+  call void @foo(i8* %b3)
+; CHECK: %b4 = call i8* @llvm.invariant.group.barrier(i8* %b3)
+  %b4 = call i8* @llvm.invariant.group.barrier(i8* %b3)
+  ret i8* %b4
+}
+
+; In this test we simplify barriers based on readonly&argmemonly attribute,
+; not on idempotent property.
+; CHECK-LABEL: void @simplifyBarrier2(i8* %p)
+define void @simplifyBarrier2(i8* %p) {
+; CHECK: %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+; CHECK-NOT: %b2 = call i8* @llvm.invariant.group.barrier
+; CHECK-NOT: %b3 = call i8* @llvm.invariant.group.barrier
+  %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+  %b2 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  %b3 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+; CHECK: call void @foo(i8* %b1)
+; CHECK: call void @foo(i8* %b1)
+  call void @foo(i8* %b2)
+  call void @foo(i8* %b3)
+
+  ret void
+}
+
+; FIXME: all of the uses of %b1 are barriers, so we could simplify it, but
+; this case should be very uncommon. Note that we coud only simplify
+; one of the barriers %b2 or %b3, because simplifing it would add another
+; non-barrier use to %b1.
+; CHECK-LABEL: void @dontSimplifyBarrier(i8* %p)
+define void @dontSimplifyBarrier(i8* %p) {
+; CHECK: %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+; CHECK: %b2 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+; CHECK: %b3 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  %b1 = call i8* @llvm.invariant.group.barrier(i8* %p)
+  %b2 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  call void @foo(i8* %b2)
+  %b3 = call i8* @llvm.invariant.group.barrier(i8* %b1)
+  call void @foo(i8* %b3)
+  call void @foo(i8* %b3)
+  ret void
+}
+
 
 declare void @foo(i8*)
 declare void @foo2(i8*, i8)
