@@ -36,7 +36,7 @@ static cl::opt<unsigned>
 MaxIterations("max-cg-scc-iterations", cl::ReallyHidden, cl::init(4));
 
 STATISTIC(MaxSCCIterations, "Maximum CGSCCPassMgr iterations on one SCC");
-
+STATISTIC(NumDevirtualized, "Number of devirtualized calls");
 //===----------------------------------------------------------------------===//
 // CGPassManager
 //
@@ -301,6 +301,7 @@ bool CGPassManager::RefreshCallGraph(const CallGraphSCC &CurSCC, CallGraph &CG,
             // Keep track of whether we turned an indirect call into a direct
             // one.
             if (!ExistingNode->getFunction()) {
+              NumDevirtualized++;
               DevirtualizedCall = true;
               DEBUG(dbgs() << "  CGSCCPASSMGR: Devirtualized call to '"
                            << Callee->getName() << "'\n");
