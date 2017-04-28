@@ -179,7 +179,7 @@ class AliasSet : public ilist_node<AliasSet> {
 
   Instruction *getUnknownInst(unsigned i) const {
     assert(i < UnknownInsts.size());
-    return cast_or_null<Instruction>(UnknownInsts[i]);
+    return dyn_cast_or_null<Instruction>(UnknownInsts[i]);
   }
 
 public:
