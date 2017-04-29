@@ -35,8 +35,12 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
+#include <llvm/ADT/Statistic.h>
 
 using namespace llvm;
+
+STATISTIC(NumDevirtualized,  "Number of indirect calls devirtualized");
+STATISTIC(NumDevirtualizedPartially,   "Number indirect calls partially devirtualized");
 
 //===----------------------------------------------------------------------===//
 //                                Value Class
@@ -416,6 +420,12 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
         C->handleOperandChange(this, New);
         continue;
       }
+    }
+    if (isa<CallInst>(U.getUser())) {
+      if (isa<Constant>(New))
+        NumDevirtualized++;
+      else
+        NumDevirtualizedPartially++;
     }
 
     U.set(New);
