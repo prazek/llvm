@@ -5137,7 +5137,8 @@ the loop identifier metadata node directly:
 '``invariant.group``' Metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``invariant.group`` metadata may be attached to ``load``/``store`` instructions.
+The experimental ``invariant.group`` metadata may be attached to
+``load``/``store`` instructions.
 The existence of the ``invariant.group`` metadata on the instruction tells 
 the optimizer that every ``load`` and ``store`` to the same pointer operand 
 within the same invariant group can be assumed to load or store the same  
@@ -5187,6 +5188,8 @@ to the SSA value of the pointer operand.
   ; if %x mustalias %y then we can replace the above instruction with
   %v = load i8, i8* %y
 
+Note that this is an experimental feature, which means that semantics might
+change in the future.
 
 '``type``' Metadata
 ^^^^^^^^^^^^^^^^^^^
@@ -12699,7 +12702,8 @@ Overview:
 
 The '``llvm.invariant.group.barrier``' intrinsic can be used when an invariant 
 established by invariant.group metadata no longer holds, to obtain a new pointer
-value that does not carry the invariant information.
+value that does not carry the invariant information. It is an experimental
+intrinsic, which means that it's semantics might change in the future.
 
 
 Arguments:

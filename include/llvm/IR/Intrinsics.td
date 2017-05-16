@@ -693,6 +693,8 @@ def int_invariant_end   : Intrinsic<[],
 // which is valid.
 // The argument also can't be marked with 'returned' attribute, because
 // it would remove barrier.
+// Note that it is still experimental, which means that semantics of it
+// might change in the future.
 def int_invariant_group_barrier : Intrinsic<[llvm_ptr_ty],
                                             [llvm_ptr_ty],
                                             [IntrInaccessibleMemOnly]>;
