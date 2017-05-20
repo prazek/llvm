@@ -5188,7 +5188,7 @@ to the SSA value of the pointer operand.
   ; if %x mustalias %y then we can replace the above instruction with
   %v = load i8, i8* %y
 
-Note that this is an experimental feature, which means that semantics might
+Note that this is an experimental feature, which means that its semantics might
 change in the future.
 
 '``type``' Metadata
@@ -12703,7 +12703,7 @@ Overview:
 The '``llvm.invariant.group.barrier``' intrinsic can be used when an invariant 
 established by invariant.group metadata no longer holds, to obtain a new pointer
 value that does not carry the invariant information. It is an experimental
-intrinsic, which means that it's semantics might change in the future.
+intrinsic, which means that its semantics might change in the future.
 
 
 Arguments:
