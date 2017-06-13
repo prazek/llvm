@@ -1537,4 +1537,10 @@ define i64 @fcmp_constant_to_rhs_olt(float %x) {
   ret i64 %result
 }
 
+; CHECK: attributes #0 = { norecurse nounwind readnone speculatable }
+; CHECK: attributes #1 = { nounwind }
+; CHECK: attributes #2 = { norecurse nounwind }
+; CHECK: attributes #3 = { convergent norecurse nounwind readnone }
+; CHECK: attributes #4 = { norecurse nounwind readonly }
+; CHECK: attributes #5 = { nounwind readnone }
 ; CHECK: attributes #6 = { convergent }
