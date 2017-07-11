@@ -40,7 +40,11 @@
 using namespace llvm;
 
 STATISTIC(NumDevirtualized,  "Number of indirect calls devirtualized");
-STATISTIC(NumDevirtualizedPartially,   "Number indirect calls partially devirtualized");
+STATISTIC(NumDevirtualizedPartially,   "Number of indirect calls partially devirtualized");
+STATISTIC(NumVTableDevirtualized,  "Number of vtable loads devirtualized");
+STATISTIC(NumVTableDevirtualizedPartially,   "Number of vtable loads partially devirtualized");
+
+
 
 //===----------------------------------------------------------------------===//
 //                                Value Class
@@ -411,6 +415,15 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
   if (!NoMetadata && isUsedByMetadata())
     ValueAsMetadata::handleRAUW(this, New);
 
+  bool IsVTableLoad = false;
+  if(auto *LI = dyn_cast<LoadInst>(this)) {
+    LI->dump();
+    if (LI->getMetadata(LLVMContext::MD_invariant_group)) {
+      NumVTableDevirtualizedPartially++;
+      IsVTableLoad = true;
+    }
+
+  }
   while (!use_empty()) {
     Use &U = *UseList;
     // Must handle Constants specially, we cannot call replaceUsesOfWith on a
@@ -421,7 +434,14 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
         continue;
       }
     }
-    if (isa<CallInst>(U.getUser())) {
+
+    if (IsVTableLoad) {
+      if (isa<Constant>(New))
+        NumVTableDevirtualized++;
+      else
+        NumVTableDevirtualizedPartially++;
+    }
+    else if (isa<CallInst>(U.getUser())) {
       if (isa<Constant>(New))
         NumDevirtualized++;
       else

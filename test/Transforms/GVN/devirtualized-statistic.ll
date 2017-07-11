@@ -20,6 +20,7 @@ define void @setPointer(void()** %x) {
   store void()* @foo, void()** %x
   ret void
 }
+
 ; CHECK-LABEL: define void @devirtualize2
 define void @devirtualize2(i8* %p) {
   %x = bitcast i8* %p to void()**
@@ -55,9 +56,22 @@ define void @partialDevirtualize(i8* %p) {
   ret void
 }
 
+define i8 @vtableLoad(i8** %p) {
+  %vtable = load i8*, i8** %p, !invariant.group !0
+  %x = load i8, i8* %vtable
+  call void @foo()
+  %vtable2 = load i8*, i8** %p, !invariant.group !0
+
+  %x2 = load i8, i8* %vtable2
+  %x3 = add i8 %x, %x2
+  ret i8 %x3
+}
+
 
 
 declare void @foo()
 ; CHECK-LABEL: Statistics Collected
 ; CHECK:{{.*}}4 ir {{.*}}Number of indirect calls devirtualized
-; CHECK:{{.*}}3 ir {{.*}}Number indirect calls partially devirtualized
+; CHECK:{{.*}}3 ir {{.*}}Number of indirect calls partially devirtualized
+
+!0 = !{}
