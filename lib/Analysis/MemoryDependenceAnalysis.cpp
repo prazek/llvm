@@ -75,6 +75,10 @@ static cl::opt<unsigned>
                      cl::desc("The number of blocks to scan during memory "
                               "dependency analysis (default = 1000)"));
 
+static cl::opt<bool> DisableInvariantGroups("disable-invariant-groups",
+cl::init(false));
+
+
 // Limit on the number of memdep results to process.
 static const unsigned int NumResultsLimit = 100;
 
@@ -350,6 +354,8 @@ MemDepResult MemoryDependenceResults::getPointerDependencyFrom(
 MemDepResult
 MemoryDependenceResults::getInvariantGroupPointerDependency(LoadInst *LI,
                                                             BasicBlock *BB) {
+  if (DisableInvariantGroups)
+    return MemDepResult::getUnknown();
 
   auto *InvariantGroupMD = LI->getMetadata(LLVMContext::MD_invariant_group);
   if (!InvariantGroupMD)

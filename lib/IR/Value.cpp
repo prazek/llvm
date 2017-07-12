@@ -417,9 +417,7 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
 
   bool IsVTableLoad = false;
   if(auto *LI = dyn_cast<LoadInst>(this)) {
-    LI->dump();
     if (LI->getMetadata(LLVMContext::MD_invariant_group)) {
-      NumVTableDevirtualizedPartially++;
       IsVTableLoad = true;
     }
 

@@ -1781,14 +1781,6 @@ static unsigned replaceDominatedUsesWith(Value *From, Value *To,
                                          const RootType &Root,
                                          const DominatesFn &Dominates) {
   assert(From->getType() == To->getType());
-  bool IsVTableLoad = false;
-  if(auto *LI = dyn_cast<LoadInst>(From)) {
-    LI->dump();
-    if (LI->getMetadata(LLVMContext::MD_invariant_group)) {
-      IsVTableLoad = true;
-    }
-
-  }
   unsigned Count = 0;
   for (Value::use_iterator UI = From->use_begin(), UE = From->use_end();
        UI != UE;) {
