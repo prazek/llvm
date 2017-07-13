@@ -39,10 +39,10 @@
 
 using namespace llvm;
 
-STATISTIC(NumDevirtualized,  "Number of indirect calls devirtualized");
-STATISTIC(NumDevirtualizedPartially,   "Number of vfunction loads removed");
-STATISTIC(NumVTableDevirtualized,  "Number of vtable loads devirtualized");
-STATISTIC(NumVTableDevirtualizedPartially,   "Number of vtable loads removed");
+STATISTIC(NumDevirtualized,  "4. Number of virtual function uses devirtualized");
+STATISTIC(NumDevirtualizedPartially,   "3. Number of vfunction pointers loads repaced");
+STATISTIC(NumVTableDevirtualized,  "2. Number of vtable uses devirtualized");
+STATISTIC(NumVTableDevirtualizedPartially,   "1. Number of vtable loads replaced");
 
 
 
