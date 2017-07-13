@@ -1192,6 +1192,9 @@ void Instruction::dropUnknownNonDebugMetadata(ArrayRef<unsigned> KnownIDs) {
 
   SmallSet<unsigned, 4> KnownSet;
   KnownSet.insert(KnownIDs.begin(), KnownIDs.end());
+  // never remove these metadata.
+  KnownSet.insert(LLVMContext::MD_vtable_load);
+  KnownSet.insert(LLVMContext::MD_vfunction_load);
   if (KnownSet.empty()) {
     // Just drop our entry at the store.
     InstructionMetadata.erase(this);
