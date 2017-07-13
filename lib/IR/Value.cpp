@@ -40,9 +40,9 @@
 using namespace llvm;
 
 STATISTIC(NumDevirtualized,  "Number of indirect calls devirtualized");
-STATISTIC(NumDevirtualizedPartially,   "Number of indirect calls partially devirtualized");
+STATISTIC(NumDevirtualizedPartially,   "Number of vfunction loads removed");
 STATISTIC(NumVTableDevirtualized,  "Number of vtable loads devirtualized");
-STATISTIC(NumVTableDevirtualizedPartially,   "Number of vtable loads partially devirtualized");
+STATISTIC(NumVTableDevirtualizedPartially,   "Number of vtable loads removed");
 
 
 
@@ -419,21 +419,18 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
   if(auto *LI = dyn_cast<LoadInst>(this)) {
     if (LI->getMetadata(LLVMContext::MD_vtable_load)) {
       IsVTableLoad = true;
-      if (!isa<Constant>(New))
-        NumVTableDevirtualizedPartially++;
+      NumVTableDevirtualizedPartially++;
     }
   }
   bool IsVFunctionLoad = false;
   if(auto *LI = dyn_cast<LoadInst>(this)) {
     if (LI->getMetadata(LLVMContext::MD_vfunction_load)) {
       IsVFunctionLoad = true;
-      if (!isa<Constant>(New))
-        NumDevirtualizedPartially++;
+      NumDevirtualizedPartially++;
     }
   }
 
   while (!use_empty()) {
-
     if (IsVTableLoad) {
       if (isa<Constant>(New))
         NumVTableDevirtualized++;

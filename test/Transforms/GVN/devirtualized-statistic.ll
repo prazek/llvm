@@ -5,7 +5,7 @@
 define void @devirtualize(i8* %p) {
   %x = bitcast i8* %p to void()**
   store void()* @foo, void()** %x
-  %c = load void()*, void()** %x
+  %c = load void()*, void()** %x, !vfunction_load !0
 ; 2 devirtualizations here
 ; CHECK: call void @foo()
 ; CHECK: call void @foo()
@@ -25,7 +25,7 @@ define void @setPointer(void()** %x) {
 define void @devirtualize2(i8* %p) {
   %x = bitcast i8* %p to void()**
   call void @setPointer(void()** %x)
-  %c = load void()*, void()** %x
+  %c = load void()*, void()** %x, !vfunction_load !0
 ; 2 devirtualizations here
 ; CHECK: call void @foo()
 ; CHECK: call void @foo()
@@ -57,10 +57,10 @@ define void @partialDevirtualize(i8* %p) {
 }
 
 define i8 @vtableLoad(i8** %p) {
-  %vtable = load i8*, i8** %p, !vtable_load !0
+  %vtable = load i8*, i8** %p, !vtable_load !0, !invariant.group !0
   %x = load i8, i8* %vtable
   call void @foo()
-  %vtable2 = load i8*, i8** %p, !vtable_load !0
+  %vtable2 = load i8*, i8** %p, !invariant.group !0, !vtable_load !0
 
   %x2 = load i8, i8* %vtable2
   %x3 = add i8 %x, %x2
