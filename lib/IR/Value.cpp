@@ -419,9 +419,13 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
   if(auto *LI = dyn_cast<LoadInst>(this)) {
     if (LI->getMetadata(LLVMContext::MD_invariant_group)) {
       IsVTableLoad = true;
+      if (!isa<Constant>(New))
+        NumVTableDevirtualizedPartially++;
     }
 
   }
+  bool counted = false;
+
   while (!use_empty()) {
     Use &U = *UseList;
     // Must handle Constants specially, we cannot call replaceUsesOfWith on a
@@ -436,14 +440,15 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
     if (IsVTableLoad) {
       if (isa<Constant>(New))
         NumVTableDevirtualized++;
-      else
-        NumVTableDevirtualizedPartially++;
+
     }
     else if (isa<CallInst>(U.getUser())) {
       if (isa<Constant>(New))
         NumDevirtualized++;
-      else
+      else if (!counted) {
         NumDevirtualizedPartially++;
+        counted = true;
+      }
     }
 
     U.set(New);
