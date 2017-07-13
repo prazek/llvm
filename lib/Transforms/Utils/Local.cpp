@@ -55,6 +55,11 @@ using namespace llvm::PatternMatch;
 #define DEBUG_TYPE "local"
 
 STATISTIC(NumRemoved, "Number of unreachable basic blocks removed");
+STATISTIC(NumDevirtualized,  "Number of indirect calls devirtualized");
+STATISTIC(NumDevirtualizedPartially,   "Number of indirect calls partially devirtualized");
+STATISTIC(NumVTableDevirtualized,  "Number of vtable loads devirtualized");
+STATISTIC(NumVTableDevirtualizedPartially,   "Number of vtable loads partially devirtualized");
+
 
 //===----------------------------------------------------------------------===//
 //  Local constant propagation.
@@ -1741,6 +1746,8 @@ void llvm::combineMetadata(Instruction *K, const Instruction *J,
         K->setMetadata(Kind, JMD);
         break;
       case LLVMContext::MD_invariant_group:
+      case LLVMContext::MD_vfunction_load:
+      case LLVMContext::MD_vtable_load:
         // Preserve !invariant.group in K.
         break;
       case LLVMContext::MD_align:
@@ -1772,7 +1779,9 @@ void llvm::combineMetadataForCSE(Instruction *K, const Instruction *J) {
       LLVMContext::MD_invariant_load,  LLVMContext::MD_nonnull,
       LLVMContext::MD_invariant_group, LLVMContext::MD_align,
       LLVMContext::MD_dereferenceable,
-      LLVMContext::MD_dereferenceable_or_null};
+      LLVMContext::MD_dereferenceable_or_null,
+      LLVMContext::MD_vfunction_load,
+      LLVMContext::MD_vtable_load};
   combineMetadata(K, J, KnownIDs);
 }
 
@@ -1780,6 +1789,22 @@ template <typename RootType, typename DominatesFn>
 static unsigned replaceDominatedUsesWith(Value *From, Value *To,
                                          const RootType &Root,
                                          const DominatesFn &Dominates) {
+  bool IsVTableLoad = false;
+  if(auto *LI = dyn_cast<LoadInst>(From)) {
+    if (LI->getMetadata(LLVMContext::MD_vtable_load)) {
+      IsVTableLoad = true;
+      if (!isa<Constant>(To))
+        NumVTableDevirtualizedPartially++;
+    }
+  }
+  bool IsVFunctionLoad = false;
+  if(auto *LI = dyn_cast<LoadInst>(From)) {
+    if (LI->getMetadata(LLVMContext::MD_vfunction_load)) {
+      IsVFunctionLoad = true;
+      if (!isa<Constant>(To))
+        NumDevirtualizedPartially++;
+    }
+  }
   assert(From->getType() == To->getType());
   unsigned Count = 0;
   for (Value::use_iterator UI = From->use_begin(), UE = From->use_end();
@@ -1787,6 +1812,17 @@ static unsigned replaceDominatedUsesWith(Value *From, Value *To,
     Use &U = *UI++;
     if (!Dominates(Root, U))
       continue;
+
+    if (IsVTableLoad) {
+      if (isa<Constant>(To))
+        NumVTableDevirtualized++;
+
+    }
+    if (IsVFunctionLoad) {
+      if (isa<Constant>(To))
+        NumDevirtualized++;
+    }
+
     U.set(To);
     DEBUG(dbgs() << "Replace dominated use of '" << From->getName() << "' as "
                  << *To << " in " << *U << "\n");

@@ -6147,6 +6147,9 @@ bool CodeGenPrepare::optimizeInst(Instruction *I, bool &ModifiedDT) {
 
   if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
     LI->setMetadata(LLVMContext::MD_invariant_group, nullptr);
+    LI->setMetadata(LLVMContext::MD_vtable_load, nullptr);
+    LI->setMetadata(LLVMContext::MD_vfunction_load, nullptr);
+
     if (TLI) {
       bool Modified = optimizeLoadExt(LI);
       unsigned AS = LI->getPointerAddressSpace();

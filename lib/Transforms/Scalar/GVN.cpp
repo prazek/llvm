@@ -1183,6 +1183,13 @@ bool GVN::PerformLoadPRE(LoadInst *LI, AvailValInBlkVect &ValuesPerBlock,
     if (auto *RangeMD = LI->getMetadata(LLVMContext::MD_range))
       NewLoad->setMetadata(LLVMContext::MD_range, RangeMD);
 
+    if (auto *InvGroupMD = LI->getMetadata(LLVMContext::MD_vtable_load))
+      NewLoad->setMetadata(LLVMContext::MD_vtable_load, InvGroupMD);
+    if (auto *InvGroupMD = LI->getMetadata(LLVMContext::MD_vfunction_load))
+      NewLoad->setMetadata(LLVMContext::MD_vfunction_load, InvGroupMD);
+
+
+
     // We do not propagate the old load's debug location, because the new
     // load now lives in a different BB, and we want to avoid a jumpy line
     // table.
@@ -1390,7 +1397,8 @@ static void patchReplacementInstruction(Instruction *I, Value *Repl) {
       LLVMContext::MD_tbaa,           LLVMContext::MD_alias_scope,
       LLVMContext::MD_noalias,        LLVMContext::MD_range,
       LLVMContext::MD_fpmath,         LLVMContext::MD_invariant_load,
-      LLVMContext::MD_invariant_group};
+      LLVMContext::MD_invariant_group, LLVMContext::MD_vfunction_load,
+      LLVMContext::MD_vtable_load};
   combineMetadata(ReplInst, I, KnownIDs);
 }
 

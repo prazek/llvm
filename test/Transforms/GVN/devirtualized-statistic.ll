@@ -39,8 +39,8 @@ define void @devirtualize2(i8* %p) {
 ; CHECK-LABEL: define void @partialDevirtualize
 define void @partialDevirtualize(i8* %p) {
   %x = bitcast i8* %p to void()**
-  %c = load void()*, void()** %x
-  %d = load void()*, void()** %x
+  %c = load void()*, void()** %x, !vfunction_load !0
+  %d = load void()*, void()** %x, !vfunction_load !0
 ; 3 partial devirtualizations here
 ; CHECK: call void %c()
 ; CHECK: call void %c()
@@ -57,10 +57,10 @@ define void @partialDevirtualize(i8* %p) {
 }
 
 define i8 @vtableLoad(i8** %p) {
-  %vtable = load i8*, i8** %p, !invariant.group !0
+  %vtable = load i8*, i8** %p, !vtable_load !0
   %x = load i8, i8* %vtable
   call void @foo()
-  %vtable2 = load i8*, i8** %p, !invariant.group !0
+  %vtable2 = load i8*, i8** %p, !vtable_load !0
 
   %x2 = load i8, i8* %vtable2
   %x3 = add i8 %x, %x2

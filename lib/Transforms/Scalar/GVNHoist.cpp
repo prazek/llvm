@@ -207,7 +207,8 @@ static void combineKnownMetadata(Instruction *ReplInst, Instruction *I) {
       LLVMContext::MD_tbaa,           LLVMContext::MD_alias_scope,
       LLVMContext::MD_noalias,        LLVMContext::MD_range,
       LLVMContext::MD_fpmath,         LLVMContext::MD_invariant_load,
-      LLVMContext::MD_invariant_group};
+      LLVMContext::MD_invariant_group, LLVMContext::MD_vfunction_load,
+      LLVMContext::MD_vtable_load};
   combineMetadata(ReplInst, I, KnownIDs);
 }
 

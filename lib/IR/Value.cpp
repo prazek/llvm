@@ -417,16 +417,33 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
 
   bool IsVTableLoad = false;
   if(auto *LI = dyn_cast<LoadInst>(this)) {
-    if (LI->getMetadata(LLVMContext::MD_invariant_group)) {
+    if (LI->getMetadata(LLVMContext::MD_vtable_load)) {
       IsVTableLoad = true;
       if (!isa<Constant>(New))
         NumVTableDevirtualizedPartially++;
     }
-
   }
-  bool counted = false;
+  bool IsVFunctionLoad = false;
+  if(auto *LI = dyn_cast<LoadInst>(this)) {
+    if (LI->getMetadata(LLVMContext::MD_vfunction_load)) {
+      IsVFunctionLoad = true;
+      if (!isa<Constant>(New))
+        NumDevirtualizedPartially++;
+    }
+  }
 
   while (!use_empty()) {
+
+    if (IsVTableLoad) {
+      if (isa<Constant>(New))
+        NumVTableDevirtualized++;
+
+    }
+    if (IsVFunctionLoad) {
+      if (isa<Constant>(New))
+        NumDevirtualized++;
+    }
+
     Use &U = *UseList;
     // Must handle Constants specially, we cannot call replaceUsesOfWith on a
     // constant because they are uniqued.
@@ -437,19 +454,7 @@ void Value::doRAUW(Value *New, bool NoMetadata) {
       }
     }
 
-    if (IsVTableLoad) {
-      if (isa<Constant>(New))
-        NumVTableDevirtualized++;
 
-    }
-    else if (isa<CallInst>(U.getUser())) {
-      if (isa<Constant>(New))
-        NumDevirtualized++;
-      else if (!counted) {
-        NumDevirtualizedPartially++;
-        counted = true;
-      }
-    }
 
     U.set(New);
   }
