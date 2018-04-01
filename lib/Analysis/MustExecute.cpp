@@ -30,12 +30,16 @@ void llvm::computeLoopSafetyInfo(LoopSafetyInfo *SafetyInfo, Loop *CurLoop) {
   BasicBlock *Header = CurLoop->getHeader();
   // Setting default safety values.
   SafetyInfo->MayThrow = false;
-  SafetyInfo->HeaderMayThrow = false;
-  // Iterate over header and compute safety info.
-  SafetyInfo->HeaderMayThrow =
-    !isGuaranteedToTransferExecutionToSuccessor(Header);
 
-  SafetyInfo->MayThrow = SafetyInfo->HeaderMayThrow;
+  // Iterate over header and compute safety info.
+  for (const auto &I : *CurLoop->getHeader()) {
+    if (!isGuaranteedToTransferExecutionToSuccessor(&I)) {
+      SafetyInfo->MayThrow = true;
+      break;
+    }
+    SafetyInfo->GuaranteeToExecuteHeaderInstructions.insert(&I);
+  }
+
   // Iterate over loop instructions and compute safety info.
   // Skip header as it has been computed and stored in HeaderMayThrow.
   // The first block in loopinfo.Blocks is guaranteed to be the header.
@@ -107,10 +111,9 @@ bool llvm::isGuaranteedToExecute(const Instruction &Inst,
   // If the instruction is in the header block for the loop (which is very
   // common), it is always guaranteed to dominate the exit blocks.  Since this
   // is a common case, and can save some work, check it now.
-  if (Inst.getParent() == CurLoop->getHeader())
-    // If there's a throw in the header block, we can't guarantee we'll reach
-    // Inst.
-    return !SafetyInfo->HeaderMayThrow;
+  if (Inst.getParent() == CurLoop->getHeader()) {
+    return SafetyInfo->GuaranteeToExecuteHeaderInstructions.count(&Inst);
+  }
 
   // Somewhere in this loop there is an instruction which may throw and make us
   // exit the loop.

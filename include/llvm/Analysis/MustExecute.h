@@ -39,7 +39,10 @@ class Loop;
 struct LoopSafetyInfo {
   bool MayThrow = false;       // The current loop contains an instruction which
                                // may throw.
-  bool HeaderMayThrow = false; // Same as previous, but specific to loop header
+  /// This set keeps information about all the header instructions that are not
+  /// dominated by any instruction that may throw. This guarantees that they
+  /// will be executed when the loop executes.
+  SmallPtrSet<const Instruction*, 32> GuaranteeToExecuteHeaderInstructions;
   // Used to update funclet bundle operands.
   DenseMap<BasicBlock *, ColorVector> BlockColors;
 

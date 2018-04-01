@@ -21,16 +21,32 @@ loop2:
   call void @use_nothrow(i64 %div)
   br label %loop
 }
-; Negative test
-define void @throw_header(i64 %x, i64 %y, i1* %cond) {
+
+define void @throw_header_after(i64 %x, i64 %y, i1* %cond) {
+; CHECK-LABEL: throw_header_after
+; CHECK: %div = udiv i64 %x, %y
+; CHECK-LABEL: loop
+; CHECK: call void @use(i64 %div)
+entry:
+  br label %loop
+
+loop:                                         ; preds = %entry, %for.inc
+  %div = udiv i64 %x, %y
+  call void @use(i64 %div)
+  br label %loop
+}
+
+define void @throw_header_before(i64 %x, i64 %y, i1* %cond) {
 ; CHECK-LABEL: throw_header
 ; CHECK-LABEL: loop
+; CHECK: call void @use(i64 0)
 ; CHECK: %div = udiv i64 %x, %y
 ; CHECK: call void @use(i64 %div)
 entry:
   br label %loop
 
 loop:                                         ; preds = %entry, %for.inc
+  call void @use(i64 0) ; this may throw
   %div = udiv i64 %x, %y
   call void @use(i64 %div)
   br label %loop
