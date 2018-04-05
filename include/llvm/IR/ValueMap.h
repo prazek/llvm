@@ -106,6 +106,9 @@ public:
       : Map(NumInitBuckets), Data() {}
   explicit ValueMap(const ExtraData &Data, unsigned NumInitBuckets = 64)
       : Map(NumInitBuckets), Data(Data) {}
+  ValueMap(ValueMap &&) noexcept = default;
+  ValueMap &operator=(ValueMap &&) noexcept = default;
+
   ValueMap(const ValueMap &) = delete;
   ValueMap &operator=(const ValueMap &) = delete;
 

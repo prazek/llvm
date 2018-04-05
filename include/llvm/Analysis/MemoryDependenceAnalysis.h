@@ -26,6 +26,7 @@
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/PredIteratorCache.h"
+#include "llvm/IR/ValueMap.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <cassert>
@@ -314,7 +315,7 @@ private:
   /// Cache storing single nonlocal def for the instruction.
   /// It is set when nonlocal def would be found in function returning only
   /// local dependencies.
-  DenseMap<Instruction *, NonLocalDepResult> NonLocalDefsCache;
+  ValueMap<Instruction *, NonLocalDepResult> NonLocalDefsCache;
 
   /// This map stores the cached results of doing a pointer lookup at the
   /// bottom of a block.

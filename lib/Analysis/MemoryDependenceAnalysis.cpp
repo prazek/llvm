@@ -430,9 +430,10 @@ MemoryDependenceResults::getInvariantGroupPointerDependency(LoadInst *LI,
   // dependency won't be found then return nonLocal counting that the
   // user will call getNonLocalPointerDependency, which will return cached
   // result.
-  NonLocalDefsCache.try_emplace(
-      LI, NonLocalDepResult(ClosestDependency->getParent(),
-                            MemDepResult::getDef(ClosestDependency), nullptr));
+  NonLocalDefsCache.insert(
+    {LI, NonLocalDepResult(ClosestDependency->getParent(),
+                           MemDepResult::getDef(ClosestDependency),
+                           nullptr)});
   return MemDepResult::getNonLocal();
 }
 
@@ -919,9 +920,7 @@ void MemoryDependenceResults::getNonLocalPointerDependency(
          "Can't get pointer deps of a non-pointer!");
   Result.clear();
   {
-    // Check if there is cached Def with invariant.group. FIXME: cache might be
-    // invalid if cached instruction would be removed between call to
-    // getPointerDependencyFrom and this function.
+    // Check if there is cached Def with invariant.group.
     auto NonLocalDefIt = NonLocalDefsCache.find(QueryInst);
     if (NonLocalDefIt != NonLocalDefsCache.end()) {
       Result.push_back(std::move(NonLocalDefIt->second));
@@ -1709,7 +1708,7 @@ MemoryDependenceAnalysis::run(Function &F, FunctionAnalysisManager &AM) {
   auto &AC = AM.getResult<AssumptionAnalysis>(F);
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
-  return MemoryDependenceResults(AA, AC, TLI, DT);
+  return {AA, AC, TLI, DT};
 }
 
 char MemoryDependenceWrapperPass::ID = 0;
