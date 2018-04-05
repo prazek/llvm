@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: opt < %s -newgvn -S | FileCheck %s
 
 %struct.A = type { i32 (...)** }
